@@ -1,28 +1,91 @@
 #include "StringCalculator.h"
 #include <sstream>
+#include <stdexcept>
+#include <regex>
+#include <numeric>
+#include <vector>
 
 int StringCalculator::add(const std::string& numbers) {
     if (numbers.empty()) {
         return 0;
     }
-    
-    std::vector<int> numList = splitAndConvert(numbers);
-    int sum = 0;
-    for (int num : numList) {
-        sum += num;
-    }
-    
-    return sum;
+
+    std::string delimiters = ",|\n";
+    std::string nums = numbers;
+
+    nums = getDelimitersAndNumbers(numbers, delimiters);
+
+    return calculateSum(nums, delimiters);
 }
 
-std::vector<int> StringCalculator::splitAndConvert(const std::string& numbers) {
-    std::vector<int> result;
-    std::stringstream ss(numbers);
-    std::string item;
-    
-    while (std::getline(ss, item, ',')) {
-        result.push_back(std::stoi(item));
+int StringCalculator::calculateSum(const std::string& numbers, const std::string& delimiters) {
+    std::regex delimiterPattern(delimiters);
+    std::sregex_token_iterator iter(numbers.begin(), numbers.end(), delimiterPattern, -1);
+    std::sregex_token_iterator end;
+
+    std::vector<int> nums;
+    std::vector<int> negatives;
+
+    for (; iter != end; ++iter) {
+        if (iter->str().empty()) continue; // Skip empty tokens
+        int num = parseNumber(*iter);
+        if (num < 0) {
+            negatives.push_back(num);
+        } else if (num <= 1000) {
+            nums.push_back(num);
+        }
     }
-    
-    return result;
+
+    if (!negatives.empty()) {
+        throwNegativeNumbersException(negatives);
+    }
+
+    return std::accumulate(nums.begin(), nums.end(), 0);
+}
+
+int StringCalculator::parseNumber(const std::string& numStr) {
+    return std::stoi(numStr);
+}
+
+void StringCalculator::throwNegativeNumbersException(const std::vector<int>& negatives) {
+    std::ostringstream oss;
+    oss << "negatives not allowed: ";
+    for (size_t i = 0; i < negatives.size(); ++i) {
+        if (i > 0) {
+            oss << ", ";
+        }
+        oss << negatives[i];
+    }
+    throw std::runtime_error(oss.str());
+}
+
+std::string StringCalculator::regex_escape(const std::string& str) {
+    static const std::regex re(R"([.^$|()\[\]{}*+?\\])");
+    return std::regex_replace(str, re, R"(\$&)");
+}
+
+std::string StringCalculator::extractDelimiters(const std::string& delimiterSection) {
+    std::string delimiters;
+    if (delimiterSection[0] == '[') {
+        std::regex re("\\[(.*?)\\]");
+        std::sregex_iterator iter(delimiterSection.begin(), delimiterSection.end(), re);
+        std::sregex_iterator end;
+        while (iter != end) {
+            delimiters += "|" + regex_escape((*iter)[1].str());
+            ++iter;
+        }
+    } else {
+        delimiters = regex_escape(delimiterSection);
+    }
+    return delimiters;
+}
+
+std::string StringCalculator::getDelimitersAndNumbers(const std::string& numbers, std::string& delimiters) {
+    if (numbers.substr(0, 2) == "//") {
+        size_t newlinePos = numbers.find('\n');
+        std::string delimiterSection = numbers.substr(2, newlinePos - 2);
+        delimiters = extractDelimiters(delimiterSection);
+        return numbers.substr(newlinePos + 1);
+    }
+    return numbers;
 }
