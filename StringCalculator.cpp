@@ -19,22 +19,8 @@ int StringCalculator::add(const std::string& numbers) {
 }
 
 int StringCalculator::calculateSum(const std::string& numbers, const std::string& delimiters) {
-    std::regex delimiterPattern(delimiters);
-    std::sregex_token_iterator iter(numbers.begin(), numbers.end(), delimiterPattern, -1);
-    std::sregex_token_iterator end;
-
-    std::vector<int> nums;
-    std::vector<int> negatives;
-
-    for (; iter != end; ++iter) {
-        if (iter->str().empty()) continue; // Skip empty tokens
-        int num = parseNumber(*iter);
-        if (num < 0) {
-            negatives.push_back(num);
-        } else if (num <= 1000) {
-            nums.push_back(num);
-        }
-    }
+    std::vector<int> nums = splitAndParseNumbers(numbers, delimiters);
+    std::vector<int> negatives = filterNegativeNumbers(nums);
 
     if (!negatives.empty()) {
         throwNegativeNumbersException(negatives);
@@ -43,8 +29,34 @@ int StringCalculator::calculateSum(const std::string& numbers, const std::string
     return std::accumulate(nums.begin(), nums.end(), 0);
 }
 
+std::vector<int> StringCalculator::splitAndParseNumbers(const std::string& numbers, const std::string& delimiters) {
+    std::regex delimiterPattern(delimiters);
+    std::sregex_token_iterator iter(numbers.begin(), numbers.end(), delimiterPattern, -1);
+    std::sregex_token_iterator end;
+
+    std::vector<int> nums;
+    for (; iter != end; ++iter) {
+        if (!iter->str().empty()) { // Skip empty tokens
+            nums.push_back(parseNumber(*iter));
+        }
+    }
+
+    return nums;
+}
+
+std::vector<int> StringCalculator::filterNegativeNumbers(const std::vector<int>& nums) {
+    std::vector<int> negatives;
+    for (int num : nums) {
+        if (num < 0) {
+            negatives.push_back(num);
+        }
+    }
+    return negatives;
+}
+
 int StringCalculator::parseNumber(const std::string& numStr) {
-    return std::stoi(numStr);
+    int num = std::stoi(numStr);
+    return num > 1000 ? 0 : num;
 }
 
 void StringCalculator::throwNegativeNumbersException(const std::vector<int>& negatives) {
