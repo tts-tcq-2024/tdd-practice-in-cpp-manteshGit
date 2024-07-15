@@ -10,6 +10,8 @@ public:
 
 private:
     int calculateSum(const std::string& numbers, const std::string& delimiters);
+    std::vector<int> splitAndParseNumbers(const std::string& numbers, const std::string& delimiters);
+    std::vector<int> filterNegativeNumbers(const std::vector<int>& nums);
     int parseNumber(const std::string& numStr);
     void throwNegativeNumbersException(const std::vector<int>& negatives);
     std::string regex_escape(const std::string& str);
